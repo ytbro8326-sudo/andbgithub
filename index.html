@@ -24,16 +24,16 @@
   <pre id="jsonOutput">Loading AniDB API response...</pre>
 
   <script type="module">
-    import { getEpisodes, handleWatch } from './anidb-client.js';
+    import { handleWatch } from './anidb-client.js';
 
     function parseParams() {
       const l = window.location;
       
       let rawRoute = "";
-      if (l.search && l.search.startsWith('?/')) {
-        rawRoute = l.search.slice(2).replace(/~and~/g, '&');
-      } else if (l.hash && l.hash.length > 1) {
+      if (l.hash && l.hash.length > 1) {
         rawRoute = l.hash.replace(/^#\/?/, '');
+      } else if (l.search && l.search.startsWith('?/')) {
+        rawRoute = l.search.slice(2).replace(/~and~/g, '&');
       } else {
         let cleanPath = l.pathname.replace(/^\/andbgithub\/?/i, '').replace(/^\/+|\/+$/g, '');
         if (cleanPath && !cleanPath.endsWith('.html')) {
@@ -41,57 +41,35 @@
         }
       }
 
-      const urlParams = new URLSearchParams(l.search);
       const parts = rawRoute.split('?')[0].split('/').filter(Boolean);
 
-      let anilistId = urlParams.get('id') || parts[0];
-      let epNum = urlParams.get('ep') || urlParams.get('episode');
-      let audio = urlParams.get('audio') || 'both';
-
-      if (!epNum && parts.length >= 2) {
-        if (parts.length === 2) {
-          epNum = parts[1];
-        } else if (parts.length >= 3) {
-          audio = parts[1];
-          epNum = parts[2];
-        }
+      if (!parts.length || parts[0].toLowerCase() !== 'malid' || parts.length < 4) {
+        return { valid: false };
       }
 
-      return { anilistId, epNum, audio };
+      const malId = parts[1];
+      const epNum = parts[2];
+      const audio = parts.slice(3).join('/').toLowerCase();
+
+      return { valid: true, malId, epNum, audio };
     }
 
     async function handleApiRequest() {
       const output = document.getElementById('jsonOutput');
-      const { anilistId, epNum, audio } = parseParams();
+      const routeInfo = parseParams();
 
-      if (!anilistId) {
+      if (!routeInfo.valid) {
         output.textContent = JSON.stringify({
-          status: "online",
-          service: "AniDB GitHub Static API",
-          routes: {
-            episodes: "github.io/andbgithub/21  (or /#/21 or ?id=21)",
-            watchBoth: "github.io/andbgithub/21/1  (or /#/21/1 or ?id=21&ep=1)",
-            watchSub: "github.io/andbgithub/21/sub/1  (or /#/21/sub/1)",
-            watchDub: "github.io/andbgithub/21/dub/1  (or /#/21/dub/1)"
-          },
-          examples: [
-            "https://YOUR_USER.github.io/andbgithub/21",
-            "https://YOUR_USER.github.io/andbgithub/21/1",
-            "https://YOUR_USER.github.io/andbgithub/#/21/1",
-            "https://YOUR_USER.github.io/andbgithub/?id=21&ep=1"
-          ]
+          error: "Invalid route format. Only /malid/{id}/{ep}/{audio} format is supported.",
+          example: "https://andbgithub.onrender.com/malid/21/1/sub/dub",
+          status: 400
         }, null, 2);
         return;
       }
 
       try {
-        if (epNum) {
-          const watchData = await handleWatch(anilistId, audio, epNum);
-          output.textContent = JSON.stringify(watchData, null, 2);
-        } else {
-          const epData = await getEpisodes(anilistId);
-          output.textContent = JSON.stringify(epData, null, 2);
-        }
+        const watchData = await handleWatch(routeInfo.malId, routeInfo.audio, routeInfo.epNum, { isMalId: true });
+        output.textContent = JSON.stringify(watchData, null, 2);
       } catch (err) {
         document.title = "404 Not Found";
         output.textContent = JSON.stringify({
