@@ -64,8 +64,40 @@ async function proxyFetchJson(targetUrl, referer = "https://anidb.app/") {
   return JSON.parse(text);
 }
 
-export async function getAniListMedia(anilistId) {
-  const query = `
+export async function getAniListMedia(idInput, isMalId = false) {
+  const numId = Number(idInput);
+
+  if (isMalId) {
+    const queryMal = `
+      query ($id: Int) {
+        Media (idMal: $id, type: ANIME) {
+          id
+          idMal
+          title { english romaji native }
+          status
+          format
+          episodes
+          seasonYear
+          synonyms
+          bannerImage
+          coverImage { extraLarge large }
+        }
+      }
+    `;
+    try {
+      const res = await fetch("https://graphql.anilist.co", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ query: queryMal, variables: { id: numId } })
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (data?.data?.Media) return data.data.Media;
+      }
+    } catch (e) {}
+  }
+
+  const queryAniList = `
     query ($id: Int) {
       Media (id: $id, type: ANIME) {
         id
@@ -84,12 +116,12 @@ export async function getAniListMedia(anilistId) {
   const res = await fetch("https://graphql.anilist.co", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ query, variables: { id: Number(anilistId) } })
+    body: JSON.stringify({ query: queryAniList, variables: { id: numId } })
   });
   if (!res.ok) throw new Error(`AniList HTTP ${res.status}`);
   const data = await res.json();
   const media = data?.data?.Media;
-  if (!media) throw new Error(`No media found for AniList ID ${anilistId}`);
+  if (!media) throw new Error(`No media found for ID ${idInput}`);
   return media;
 }
 
@@ -377,8 +409,9 @@ export async function getEpisodes(anilistId, ctx = {}) {
   };
 }
 
-export async function handleWatch(anilistId, audio = "both", epNum = 1, ctx = {}) {
-  const series = await resolveSeries(anilistId, ctx);
+export async function handleWatch(idInput, audio = "both", epNum = 1, ctx = {}) {
+  const media = ctx.media ?? await getAniListMedia(idInput, ctx.isMalId ?? false);
+  const series = await resolveSeries(media.id, { ...ctx, media });
   const episodes = await fetchProviderEpisodes(series.siteId);
   const cleanEp = Number(String(epNum).toLowerCase().replace("anidbapp-", "").trim());
   const episode = episodes.find((e) => Number(e.number) === cleanEp);
@@ -405,11 +438,12 @@ export async function handleWatch(anilistId, audio = "both", epNum = 1, ctx = {}
   }
 
   return {
-    anilistId: Number(anilistId),
+    anilistId: media.id,
+    malId: media.idMal,
     episode: cleanEp,
     providerEpisode: cleanEp,
     audio,
-    language: usedLangCodes.length ? usedLangCodes.join(",") : null,
+    language: usedLangCodes.length ? [...new Set(usedLangCodes)].join(",") : null,
     streams: allStreams
   };
 }
