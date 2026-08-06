@@ -1,0 +1,6 @@
+services:
+  - type: static
+    name: andb-github-static-api
+    env: static
+    buildCommand: ""
+    staticPublishPath: .
