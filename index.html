@@ -29,15 +29,14 @@
     function parseParams() {
       const l = window.location;
       
-      // Handle 404.html redirect query parameter: ?/21/1 or ?/21/sub/1
       let rawRoute = "";
       if (l.search && l.search.startsWith('?/')) {
         rawRoute = l.search.slice(2).replace(/~and~/g, '&');
       } else if (l.hash && l.hash.length > 1) {
         rawRoute = l.hash.replace(/^#\/?/, '');
       } else {
-        const cleanPath = l.pathname.replace(/^\/andbgithub\/?/i, '').replace(/^\/+|\/+$/g, '');
-        if (cleanPath && !cleanPath.includes('.html')) {
+        let cleanPath = l.pathname.replace(/^\/andbgithub\/?/i, '').replace(/^\/+|\/+$/g, '');
+        if (cleanPath && !cleanPath.endsWith('.html')) {
           rawRoute = cleanPath;
         }
       }
