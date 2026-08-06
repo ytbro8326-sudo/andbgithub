@@ -1,85 +1,18 @@
-<!DOCTYPE html>
-<html lang="en">
+<!DOCTYPE html> 
+<html>
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>AniDB GitHub Static API</title>
-  <style>
-    body {
-      background: #0d1117;
-      color: #e6edf3;
-      font-family: ui-monospace, SFMono-Regular, SF Mono, Menlo, Consolas, Liberation Mono, monospace;
-      margin: 0;
-      padding: 16px;
-      line-height: 1.4;
+  <meta charset="utf-8">
+  <title>AniDB Static API</title>
+  <script>
+    // SPA Router: Convert path /21/1 to hash /#/21/1 cleanly without loops
+    var l = window.location;
+    var cleanPath = l.pathname.replace(/^\/andbgithub\/?/i, '').replace(/^\/+|\/+$/g, '');
+    if (cleanPath && !cleanPath.includes('.')) {
+      var baseDir = l.pathname.replace(new RegExp(cleanPath + '$'), '');
+      l.replace(l.protocol + '//' + l.host + baseDir + '#/' + cleanPath + l.search);
     }
-    pre {
-      margin: 0;
-      white-space: pre-wrap;
-      word-break: break-all;
-    }
-  </style>
+  </script>
 </head>
 <body>
-  <pre id="jsonOutput">Loading AniDB API response...</pre>
-
-  <script type="module">
-    import { handleWatch } from './anidb-client.js';
-
-    function parseParams() {
-      const l = window.location;
-      
-      let rawRoute = "";
-      if (l.hash && l.hash.length > 1) {
-        rawRoute = l.hash.replace(/^#\/?/, '');
-      } else if (l.search && l.search.startsWith('?/')) {
-        rawRoute = l.search.slice(2).replace(/~and~/g, '&');
-      } else {
-        let cleanPath = l.pathname.replace(/^\/andbgithub\/?/i, '').replace(/^\/+|\/+$/g, '');
-        if (cleanPath && !cleanPath.endsWith('.html')) {
-          rawRoute = cleanPath;
-        }
-      }
-
-      const parts = rawRoute.split('?')[0].split('/').filter(Boolean);
-
-      if (!parts.length || parts[0].toLowerCase() !== 'malid' || parts.length < 4) {
-        return { valid: false };
-      }
-
-      const malId = parts[1];
-      const epNum = parts[2];
-      const audio = parts.slice(3).join('/').toLowerCase();
-
-      return { valid: true, malId, epNum, audio };
-    }
-
-    async function handleApiRequest() {
-      const output = document.getElementById('jsonOutput');
-      const routeInfo = parseParams();
-
-      if (!routeInfo.valid) {
-        output.textContent = JSON.stringify({
-          error: "Invalid route format. Only /malid/{id}/{ep}/{audio} format is supported.",
-          example: "https://andbgithub.onrender.com/malid/21/1/sub/dub",
-          status: 400
-        }, null, 2);
-        return;
-      }
-
-      try {
-        const watchData = await handleWatch(routeInfo.malId, routeInfo.audio, routeInfo.epNum, { isMalId: true });
-        output.textContent = JSON.stringify(watchData, null, 2);
-      } catch (err) {
-        document.title = "404 Not Found";
-        output.textContent = JSON.stringify({
-          error: err.message || "Request failed",
-          status: 404
-        }, null, 2);
-      }
-    }
-
-    handleApiRequest();
-  </script>
 </body>
 </html>
