@@ -337,22 +337,11 @@ export async function streamsForEmbed(embedUrl, audio, language) {
       audio,
       language: language?.code,
       server: "AniDB.app",
-      embed: embedUrl,
       referer: origin,
       priority: 5,
       isActive: true,
     });
   }
-  streams.push({
-    url: embedUrl,
-    type: "embed",
-    audio,
-    language: language?.code,
-    server: "AniDB.app-embed",
-    referer: `${ANIDB_BASE}/`,
-    priority: 4,
-    isActive: !hls,
-  });
   return streams;
 }
 
